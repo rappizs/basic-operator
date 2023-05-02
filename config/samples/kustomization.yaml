@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- deployer_v1_imagedeployer.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples
