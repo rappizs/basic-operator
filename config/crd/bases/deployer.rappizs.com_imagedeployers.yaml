@@ -35,11 +35,17 @@ spec:
           spec:
             description: ImageDeployerSpec defines the desired state of ImageDeployer
             properties:
+              containerPort:
+                description: Port to expose on the pod containers
+                type: integer
               host:
                 type: string
               image:
                 type: string
               replicas:
+                type: integer
+              servicePort:
+                description: Port to use for the service
                 type: integer
             type: object
           status:

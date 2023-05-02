@@ -31,6 +31,10 @@ type ImageDeployerSpec struct {
 	Replicas int    `json:"replicas,omitempty"`
 	Host     string `json:"host,omitempty"`
 	Image    string `json:"image,omitempty"`
+	// Port to expose on the pod containers
+	ContainerPort int `json:"containerPort,omitempty"`
+	// Port to use for the service
+	ServicePort int `json:"servicePort,omitempty"`
 }
 
 // ImageDeployerStatus defines the observed state of ImageDeployer

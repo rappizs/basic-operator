@@ -12,3 +12,5 @@ spec:
   replicas: 4
   host: localhost
   image: nginx:latest
+  containerPort: 80
+  servicePort: 8024

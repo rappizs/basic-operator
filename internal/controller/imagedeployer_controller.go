@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -70,11 +72,23 @@ func (r *ImageDeployerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	err = r.createService(ctx, deployer)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
 func (r *ImageDeployerReconciler) getDeployment(ctx context.Context, name, namespace string) (*appsv1.Deployment, error) {
 	var deployment appsv1.Deployment
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &deployment)
+
+	return &deployment, err
+}
+
+func (r *ImageDeployerReconciler) getService(ctx context.Context, name, namespace string) (*corev1.Service, error) {
+	var deployment corev1.Service
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &deployment)
 
 	return &deployment, err
@@ -116,6 +130,11 @@ func (r *ImageDeployerReconciler) createDeployment(ctx context.Context, deployer
 						{
 							Name:  "base-container",
 							Image: spec.Image,
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: int32(spec.ContainerPort),
+								},
+							},
 						},
 					},
 				},
@@ -147,11 +166,60 @@ func (r *ImageDeployerReconciler) createDeployment(ctx context.Context, deployer
 	return nil
 }
 
+func (r *ImageDeployerReconciler) createService(ctx context.Context, deployer *deployerv1.ImageDeployer) error {
+	log := log.FromContext(ctx)
+	spec := deployer.Spec
+
+	newService := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      deployer.Name,
+			Namespace: deployer.Namespace,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				"app": deployer.Name,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Port:       int32(spec.ServicePort),
+					TargetPort: intstr.FromInt(spec.ContainerPort),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
+		},
+	}
+
+	currService, err := r.getService(ctx, deployer.Name, deployer.Namespace)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	if errors.IsNotFound(err) {
+		err = controllerutil.SetControllerReference(deployer, &newService, r.Scheme)
+		if err != nil {
+			return err
+		}
+
+		log.Info("Creating service")
+		return r.Create(ctx, &newService)
+	}
+
+	if !reflect.DeepEqual(currService.Spec.Ports, newService.Spec.Ports) {
+		currService.Spec.Ports = newService.Spec.Ports
+		log.Info("Updating service")
+		return r.Update(ctx, currService)
+	}
+
+	return nil
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ImageDeployerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&deployerv1.ImageDeployer{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Service{}).
 		Complete(r)
 }
 
