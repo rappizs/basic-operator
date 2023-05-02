@@ -1,12 +1,14 @@
-apiVersion: deployer.my.domain/v1
+apiVersion: deployer.rappizs.com/v1
 kind: ImageDeployer
 metadata:
   labels:
     app.kubernetes.io/name: imagedeployer
     app.kubernetes.io/instance: imagedeployer-sample
-    app.kubernetes.io/part-of: basic-operator
+    app.kubernetes.io/part-of: deployment-operator
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: basic-operator
+    app.kubernetes.io/created-by: deployment-operator
   name: imagedeployer-sample
 spec:
-  # TODO(user): Add fields here
+  replicas: 4
+  host: localhost
+  image: nginx:latest

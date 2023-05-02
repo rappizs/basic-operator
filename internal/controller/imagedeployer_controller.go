@@ -19,12 +19,18 @@ package controller
 import (
 	"context"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	deployerv1 "basic-operator/api/v1"
+	deployerv1 "deployment-operator/api/v1"
 )
 
 // ImageDeployerReconciler reconciles a ImageDeployer object
@@ -33,9 +39,9 @@ type ImageDeployerReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=deployer.my.domain,resources=imagedeployers,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=deployer.my.domain,resources=imagedeployers/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=deployer.my.domain,resources=imagedeployers/finalizers,verbs=update
+//+kubebuilder:rbac:groups=deployer.rappizs.com,resources=imagedeployers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=deployer.rappizs.com,resources=imagedeployers/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=deployer.rappizs.com,resources=imagedeployers/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -49,14 +55,107 @@ type ImageDeployerReconciler struct {
 func (r *ImageDeployerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	
+	deployer := &deployerv1.ImageDeployer{}
+	err := r.Get(ctx, req.NamespacedName, deployer)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
+	}
+
+	err = r.createDeployment(ctx, deployer)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ImageDeployerReconciler) getDeployment(ctx context.Context, name, namespace string) (*appsv1.Deployment, error) {
+	var deployment appsv1.Deployment
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &deployment)
+
+	return &deployment, err
+}
+
+func (r *ImageDeployerReconciler) deleteDeployment(ctx context.Context, name, namespace string) error {
+	deployment, err := r.getDeployment(ctx, name, namespace)
+	if err != nil {
+		return err
+	}
+
+	return r.Delete(ctx, deployment)
+}
+
+func (r *ImageDeployerReconciler) createDeployment(ctx context.Context, deployer *deployerv1.ImageDeployer) error {
+	log := log.FromContext(ctx)
+	spec := deployer.Spec
+
+	newDeployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      deployer.Name,
+			Namespace: deployer.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": deployer.Name,
+				},
+			},
+			Replicas: intToInt32Pointer(spec.Replicas),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": deployer.Name,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "base-container",
+							Image: spec.Image,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	currDeployment, err := r.getDeployment(ctx, deployer.Name, deployer.Namespace)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	if errors.IsNotFound(err) {
+		err = controllerutil.SetControllerReference(deployer, newDeployment, r.Scheme)
+		if err != nil {
+			return err
+		}
+
+		log.Info("Creating deployment")
+		return r.Create(ctx, newDeployment)
+	}
+
+	if *currDeployment.Spec.Replicas != *newDeployment.Spec.Replicas {
+		currDeployment.Spec.Replicas = newDeployment.Spec.Replicas
+		log.Info("Updating deployment")
+		return r.Update(ctx, currDeployment)
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ImageDeployerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&deployerv1.ImageDeployer{}).
+		Owns(&appsv1.Deployment{}).
 		Complete(r)
+}
+
+func intToInt32Pointer(value int) *int32 {
+	value32 := int32(value)
+	return &value32
 }

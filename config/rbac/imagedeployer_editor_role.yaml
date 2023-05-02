@@ -6,13 +6,13 @@ metadata:
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/instance: imagedeployer-editor-role
     app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: basic-operator
-    app.kubernetes.io/part-of: basic-operator
+    app.kubernetes.io/created-by: deployment-operator
+    app.kubernetes.io/part-of: deployment-operator
     app.kubernetes.io/managed-by: kustomize
   name: imagedeployer-editor-role
 rules:
 - apiGroups:
-  - deployer.my.domain
+  - deployer.rappizs.com
   resources:
   - imagedeployers
   verbs:
@@ -24,7 +24,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - deployer.my.domain
+  - deployer.rappizs.com
   resources:
   - imagedeployers/status
   verbs:

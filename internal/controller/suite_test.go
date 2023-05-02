@@ -30,7 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	deployerv1 "basic-operator/api/v1"
+	deployerv1 "deployment-operator/api/v1"
 	//+kubebuilder:scaffold:imports
 )
 
