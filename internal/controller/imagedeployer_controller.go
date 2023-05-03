@@ -18,10 +18,12 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -77,6 +79,11 @@ func (r *ImageDeployerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	err = r.createIngress(ctx, deployer)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -88,19 +95,17 @@ func (r *ImageDeployerReconciler) getDeployment(ctx context.Context, name, names
 }
 
 func (r *ImageDeployerReconciler) getService(ctx context.Context, name, namespace string) (*corev1.Service, error) {
-	var deployment corev1.Service
-	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &deployment)
+	var service corev1.Service
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &service)
 
-	return &deployment, err
+	return &service, err
 }
 
-func (r *ImageDeployerReconciler) deleteDeployment(ctx context.Context, name, namespace string) error {
-	deployment, err := r.getDeployment(ctx, name, namespace)
-	if err != nil {
-		return err
-	}
+func (r *ImageDeployerReconciler) getIngress(ctx context.Context, name, namespace string) (*networkingv1.Ingress, error) {
+	var ingress networkingv1.Ingress
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &ingress)
 
-	return r.Delete(ctx, deployment)
+	return &ingress, err
 }
 
 func (r *ImageDeployerReconciler) createDeployment(ctx context.Context, deployer *deployerv1.ImageDeployer) error {
@@ -207,8 +212,81 @@ func (r *ImageDeployerReconciler) createService(ctx context.Context, deployer *d
 
 	if !reflect.DeepEqual(currService.Spec.Ports, newService.Spec.Ports) {
 		currService.Spec.Ports = newService.Spec.Ports
+
 		log.Info("Updating service")
 		return r.Update(ctx, currService)
+	}
+
+	return nil
+}
+
+func (r *ImageDeployerReconciler) createIngress(ctx context.Context, deployer *deployerv1.ImageDeployer) error {
+	log := log.FromContext(ctx)
+	spec := deployer.Spec
+
+	pathType := networkingv1.PathTypePrefix
+	newIngress := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      deployer.Name,
+			Namespace: deployer.Namespace,
+			Annotations: map[string]string{
+				"cert-manager.io/cluster-issuer": spec.ClusterIssuer,
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: spec.Host,
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: &pathType,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: deployer.Name,
+											Port: networkingv1.ServiceBackendPort{
+												Number: int32(spec.ServicePort),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			TLS: []networkingv1.IngressTLS{
+				{
+					Hosts:      []string{spec.Host},
+					SecretName: fmt.Sprintf("%s-secret", deployer.Name),
+				},
+			},
+		},
+	}
+
+	currIngress, err := r.getIngress(ctx, deployer.Name, deployer.Namespace)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	if errors.IsNotFound(err) {
+		err = controllerutil.SetControllerReference(deployer, &newIngress, r.Scheme)
+		if err != nil {
+			return err
+		}
+
+		log.Info("Creating ingress")
+		return r.Create(ctx, &newIngress)
+	}
+
+	if currIngress.Spec.Rules[0].Host != spec.Host {
+		currIngress.Spec.Rules = newIngress.Spec.Rules
+		currIngress.Spec.TLS = newIngress.Spec.TLS
+
+		log.Info("Updating ingress")
+		return r.Update(ctx, currIngress)
 	}
 
 	return nil
@@ -220,6 +298,7 @@ func (r *ImageDeployerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&deployerv1.ImageDeployer{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
+		Owns(&networkingv1.Ingress{}).
 		Complete(r)
 }
 

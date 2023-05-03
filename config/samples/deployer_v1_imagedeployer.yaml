@@ -10,7 +10,8 @@ metadata:
   name: imagedeployer-sample
 spec:
   replicas: 4
-  host: localhost
+  host: local.nginx.com
   image: nginx:latest
   containerPort: 80
-  servicePort: 8024
+  servicePort: 80
+  clusterIssuer: letsencrypt-issuer

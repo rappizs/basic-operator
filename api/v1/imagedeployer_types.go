@@ -35,6 +35,8 @@ type ImageDeployerSpec struct {
 	ContainerPort int `json:"containerPort,omitempty"`
 	// Port to use for the service
 	ServicePort int `json:"servicePort,omitempty"`
+	// Name of the cert issuer
+	ClusterIssuer string `json:"clusterIssuer,omitempty"`
 }
 
 // ImageDeployerStatus defines the observed state of ImageDeployer

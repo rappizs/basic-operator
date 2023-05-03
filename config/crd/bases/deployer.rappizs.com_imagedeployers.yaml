@@ -35,6 +35,9 @@ spec:
           spec:
             description: ImageDeployerSpec defines the desired state of ImageDeployer
             properties:
+              clusterIssuer:
+                description: Name of the cert issuer
+                type: string
               containerPort:
                 description: Port to expose on the pod containers
                 type: integer
