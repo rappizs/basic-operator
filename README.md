@@ -32,7 +32,7 @@ make install
 make deploy IMG=ghcr.io/rappizs/deployment-operator:latest
 ```
 
-3. Create an AppDeployer Custom Resource in your cluster: you can find an example in `config/samples`. Make sure that your cluster has every prerequisite and change the clusterIssuer filed to the name of your ClusterIssuer CR. The AppDeployer type has the following spec structure:
+3. Create an AppDeployer Custom Resource in your cluster: you can find an example in `config/samples`. Make sure that your cluster has every prerequisite and change the clusterIssuer field to the name of your ClusterIssuer CR, if needed. The AppDeployer type has the following spec structure:
 
 ```
 apiVersion: deployer.rappizs.com/v1
@@ -44,8 +44,10 @@ spec:
   image: ghcr.io/rappizs/nginx-hello:latest --- image to deploy
   containerPort: 80 --- port to expose on the containers
   servicePort: 80 --- port of the service
-  clusterIssuer: letsencrypt-local --- name of your ClusterIssuer
+  clusterIssuer: appdeployer-issuer --- name of your ClusterIssuer
 ```
+
+4. That's it, you should be able to access your application on the configured host address using HTTPS. If you have HTTPS problems with the certifications, check the configuration of cert-manager and your ClusterIssuer. Happy Hacking!
 
 ### Uninstall CRDs
 To delete the CRDs from the cluster:
