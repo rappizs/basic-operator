@@ -4,6 +4,10 @@ on:
   push:
     branches-ignore:
       - main
+env:
+  REGISTRY: ghcr.io
+  OPERATOR_IMAGE_NAME: ${{ github.repository }}
+  NGINX_IMAGE_NAME: nginx-hello
 
 jobs:
 
@@ -16,3 +20,19 @@ jobs:
     
     - name: Test
       run: make test
+
+    - name: Build Operator image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: Dockerfile
+        push: false
+        tags: ${{ env.REGISTRY }}/rappizs/${{ env.OPERATOR_IMAGE_NAME }}:latest
+
+    - name: Build Nginx image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: Dockerfile.nginx
+        push: false
+        tags: ${{ env.REGISTRY }}/rappizs/${{ env.NGINX_IMAGE_NAME }}:latest
