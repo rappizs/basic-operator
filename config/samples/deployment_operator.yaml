@@ -1,13 +1,13 @@
 apiVersion: deployer.rappizs.com/v1
-kind: ImageDeployer
+kind: AppDeployer
 metadata:
   labels:
-    app.kubernetes.io/name: imagedeployer
-    app.kubernetes.io/instance: imagedeployer-sample
+    app.kubernetes.io/name: appdeployer
+    app.kubernetes.io/instance: appdeployer-sample
     app.kubernetes.io/part-of: deployment-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: deployment-operator
-  name: imagedeployer-sample
+  name: appdeployer-sample
 spec:
   replicas: 4
   host: local.nginx.com

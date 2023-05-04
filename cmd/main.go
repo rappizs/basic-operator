@@ -89,11 +89,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.ImageDeployerReconciler{
+	if err = (&controller.AppDeployerReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ImageDeployer")
+		setupLog.Error(err, "unable to create controller", "controller", "AppDeployer")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

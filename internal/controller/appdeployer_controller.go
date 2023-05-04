@@ -37,29 +37,29 @@ import (
 	deployerv1 "deployment-operator/api/v1"
 )
 
-// ImageDeployerReconciler reconciles a ImageDeployer object
-type ImageDeployerReconciler struct {
+// AppDeployerReconciler reconciles a AppDeployer object
+type AppDeployerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=deployer.rappizs.com,resources=imagedeployers,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=deployer.rappizs.com,resources=imagedeployers/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=deployer.rappizs.com,resources=imagedeployers/finalizers,verbs=update
+//+kubebuilder:rbac:groups=deployer.rappizs.com,resources=appdeployers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=deployer.rappizs.com,resources=appdeployers/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=deployer.rappizs.com,resources=appdeployers/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the ImageDeployer object against the actual cluster state, and then
+// the AppDeployer object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
-func (r *ImageDeployerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *AppDeployerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	deployer := &deployerv1.ImageDeployer{}
+	deployer := &deployerv1.AppDeployer{}
 	err := r.Get(ctx, req.NamespacedName, deployer)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -87,28 +87,28 @@ func (r *ImageDeployerReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	return ctrl.Result{}, nil
 }
 
-func (r *ImageDeployerReconciler) getDeployment(ctx context.Context, name, namespace string) (*appsv1.Deployment, error) {
+func (r *AppDeployerReconciler) getDeployment(ctx context.Context, name, namespace string) (*appsv1.Deployment, error) {
 	var deployment appsv1.Deployment
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &deployment)
 
 	return &deployment, err
 }
 
-func (r *ImageDeployerReconciler) getService(ctx context.Context, name, namespace string) (*corev1.Service, error) {
+func (r *AppDeployerReconciler) getService(ctx context.Context, name, namespace string) (*corev1.Service, error) {
 	var service corev1.Service
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &service)
 
 	return &service, err
 }
 
-func (r *ImageDeployerReconciler) getIngress(ctx context.Context, name, namespace string) (*networkingv1.Ingress, error) {
+func (r *AppDeployerReconciler) getIngress(ctx context.Context, name, namespace string) (*networkingv1.Ingress, error) {
 	var ingress networkingv1.Ingress
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &ingress)
 
 	return &ingress, err
 }
 
-func (r *ImageDeployerReconciler) createDeployment(ctx context.Context, deployer *deployerv1.ImageDeployer) error {
+func (r *AppDeployerReconciler) createDeployment(ctx context.Context, deployer *deployerv1.AppDeployer) error {
 	log := log.FromContext(ctx)
 	spec := deployer.Spec
 
@@ -171,7 +171,7 @@ func (r *ImageDeployerReconciler) createDeployment(ctx context.Context, deployer
 	return nil
 }
 
-func (r *ImageDeployerReconciler) createService(ctx context.Context, deployer *deployerv1.ImageDeployer) error {
+func (r *AppDeployerReconciler) createService(ctx context.Context, deployer *deployerv1.AppDeployer) error {
 	log := log.FromContext(ctx)
 	spec := deployer.Spec
 
@@ -220,7 +220,7 @@ func (r *ImageDeployerReconciler) createService(ctx context.Context, deployer *d
 	return nil
 }
 
-func (r *ImageDeployerReconciler) createIngress(ctx context.Context, deployer *deployerv1.ImageDeployer) error {
+func (r *AppDeployerReconciler) createIngress(ctx context.Context, deployer *deployerv1.AppDeployer) error {
 	log := log.FromContext(ctx)
 	spec := deployer.Spec
 
@@ -293,9 +293,9 @@ func (r *ImageDeployerReconciler) createIngress(ctx context.Context, deployer *d
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ImageDeployerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *AppDeployerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&deployerv1.ImageDeployer{}).
+		For(&deployerv1.AppDeployer{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&networkingv1.Ingress{}).

@@ -23,8 +23,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// ImageDeployerSpec defines the desired state of ImageDeployer
-type ImageDeployerSpec struct {
+// AppDeployerSpec defines the desired state of AppDeployer
+type AppDeployerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -39,8 +39,8 @@ type ImageDeployerSpec struct {
 	ClusterIssuer string `json:"clusterIssuer,omitempty"`
 }
 
-// ImageDeployerStatus defines the observed state of ImageDeployer
-type ImageDeployerStatus struct {
+// AppDeployerStatus defines the observed state of AppDeployer
+type AppDeployerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -48,24 +48,24 @@ type ImageDeployerStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// ImageDeployer is the Schema for the imagedeployers API
-type ImageDeployer struct {
+// AppDeployer is the Schema for the appdeployers API
+type AppDeployer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ImageDeployerSpec   `json:"spec,omitempty"`
-	Status ImageDeployerStatus `json:"status,omitempty"`
+	Spec   AppDeployerSpec   `json:"spec,omitempty"`
+	Status AppDeployerStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// ImageDeployerList contains a list of ImageDeployer
-type ImageDeployerList struct {
+// AppDeployerList contains a list of AppDeployer
+type AppDeployerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ImageDeployer `json:"items"`
+	Items           []AppDeployer `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&ImageDeployer{}, &ImageDeployerList{})
+	SchemeBuilder.Register(&AppDeployer{}, &AppDeployerList{})
 }

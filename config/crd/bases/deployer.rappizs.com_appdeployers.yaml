@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
-  name: imagedeployers.deployer.rappizs.com
+  name: appdeployers.deployer.rappizs.com
 spec:
   group: deployer.rappizs.com
   names:
-    kind: ImageDeployer
-    listKind: ImageDeployerList
-    plural: imagedeployers
-    singular: imagedeployer
+    kind: AppDeployer
+    listKind: AppDeployerList
+    plural: appdeployers
+    singular: appdeployer
   scope: Namespaced
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: ImageDeployer is the Schema for the imagedeployers API
+        description: AppDeployer is the Schema for the appdeployers API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,7 +33,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ImageDeployerSpec defines the desired state of ImageDeployer
+            description: AppDeployerSpec defines the desired state of AppDeployer
             properties:
               clusterIssuer:
                 description: Name of the cert issuer
@@ -52,7 +52,7 @@ spec:
                 type: integer
             type: object
           status:
-            description: ImageDeployerStatus defines the observed state of ImageDeployer
+            description: AppDeployerStatus defines the observed state of AppDeployer
             type: object
         type: object
     served: true
