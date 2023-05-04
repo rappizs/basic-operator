@@ -11,7 +11,7 @@ metadata:
 spec:
   replicas: 4
   host: local.nginx.com
-  image: nginx:latest
+  image: ghcr.io/rappizs/nginx-hello:latest
   containerPort: 80
   servicePort: 80
   clusterIssuer: letsencrypt-issuer
