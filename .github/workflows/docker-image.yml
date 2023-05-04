@@ -6,7 +6,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  OPERATOR_IMAGE_NAME: ${{ github.repository }}
+  NGINX_IMAGE_NAME: nginx-hello
 
 jobs:
 
@@ -27,9 +28,15 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GHCR_PAT }}
  
-    - name: Build and push Docker image
-      uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v4
       with:
         context: .
         push: true
-        tags: ${{ env.REGISTRY }}/rappizs/${{ env.IMAGE_NAME }}:latest
+        tags: |
+          ${{ env.REGISTRY }}/rappizs/${{ env.OPERATOR_IMAGE_NAME }}:latest
+          ${{ env.REGISTRY }}/rappizs/${{ env.NGINX_IMAGE_NAME }}:latest
+        dockerfile: |
+          Dockerfile
+          Dockerfile.nginx
+
