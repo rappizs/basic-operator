@@ -1,6 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: appdeployer
+---
 apiVersion: deployer.rappizs.com/v1
 kind: AppDeployer
 metadata:
+  namespace: appdeployer
   labels:
     app.kubernetes.io/name: appdeployer
     app.kubernetes.io/instance: appdeployer-sample
@@ -10,8 +16,8 @@ metadata:
   name: appdeployer-sample
 spec:
   replicas: 4
-  host: local.nginx.com
+  host: local.nginx.com 
   image: ghcr.io/rappizs/nginx-hello:latest
   containerPort: 80
   servicePort: 80
-  clusterIssuer: letsencrypt-issuer
+  clusterIssuer: letsencrypt-local
