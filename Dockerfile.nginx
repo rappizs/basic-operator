@@ -1,2 +1,2 @@
-FROM ngin:latest
+FROM nginx:latest
 RUN echo "Hello there, looks like the nginx webserver works!" > /usr/share/nginx/html/index.html
