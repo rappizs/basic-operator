@@ -99,7 +99,7 @@ var _ = AfterSuite(func() {
 	// Need to sleep if the first Stop fails
 	// TODO: this is a known bug in the controller-runtime package, should implement a more elegant way to retry
 	if err != nil {
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 
 	err = testEnv.Stop()
