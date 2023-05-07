@@ -20,6 +20,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -95,5 +96,12 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
+	// Need to sleep if the first Stop fails
+	// TODO: this is a known bug in the controller-runtime package, should implement a more elegant way to retry
+	if err != nil {
+		time.Sleep(10 * time.Second)
+	}
+
+	err = testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
