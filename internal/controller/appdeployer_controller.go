@@ -62,8 +62,6 @@ type AppDeployerReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
 func (r *AppDeployerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
-
 	deployer := &deployerv1.AppDeployer{}
 	err := r.Get(ctx, req.NamespacedName, deployer)
 	if err != nil {
@@ -74,17 +72,17 @@ func (r *AppDeployerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, nil
 	}
 
-	err = r.createDeployment(ctx, deployer)
+	err = r.updateDeployment(ctx, deployer)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	err = r.createService(ctx, deployer)
+	err = r.updateService(ctx, deployer)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	err = r.createIngress(ctx, deployer)
+	err = r.updateIngress(ctx, deployer)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -113,10 +111,11 @@ func (r *AppDeployerReconciler) getIngress(ctx context.Context, name, namespace 
 	return &ingress, err
 }
 
-func (r *AppDeployerReconciler) createDeployment(ctx context.Context, deployer *deployerv1.AppDeployer) error {
+func (r *AppDeployerReconciler) updateDeployment(ctx context.Context, deployer *deployerv1.AppDeployer) error {
 	log := log.FromContext(ctx)
 	spec := deployer.Spec
 
+	terminationPeriod := int64(corev1.DefaultTerminationGracePeriodSeconds)
 	newDeployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      deployer.Name,
@@ -143,10 +142,18 @@ func (r *AppDeployerReconciler) createDeployment(ctx context.Context, deployer *
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: int32(spec.ContainerPort),
+									Protocol:      corev1.ProtocolTCP,
 								},
-							},
+							}, TerminationMessagePath: corev1.TerminationMessagePathDefault,
+							TerminationMessagePolicy: corev1.TerminationMessageReadFile,
+							ImagePullPolicy:          corev1.PullAlways,
 						},
 					},
+					SecurityContext:               &corev1.PodSecurityContext{},
+					RestartPolicy:                 corev1.RestartPolicyAlways,
+					DNSPolicy:                     corev1.DNSClusterFirst,
+					SchedulerName:                 corev1.DefaultSchedulerName,
+					TerminationGracePeriodSeconds: &terminationPeriod,
 				},
 			},
 		},
@@ -167,8 +174,11 @@ func (r *AppDeployerReconciler) createDeployment(ctx context.Context, deployer *
 		return r.Create(ctx, newDeployment)
 	}
 
-	if *currDeployment.Spec.Replicas != *newDeployment.Spec.Replicas {
-		currDeployment.Spec.Replicas = newDeployment.Spec.Replicas
+	if *currDeployment.Spec.Replicas != *newDeployment.Spec.Replicas ||
+		!reflect.DeepEqual(currDeployment.Spec.Template.Spec.Containers, newDeployment.Spec.Template.Spec.Containers) {
+
+		currDeployment.Spec = newDeployment.Spec
+
 		log.Info("Updating deployment")
 		return r.Update(ctx, currDeployment)
 	}
@@ -176,7 +186,7 @@ func (r *AppDeployerReconciler) createDeployment(ctx context.Context, deployer *
 	return nil
 }
 
-func (r *AppDeployerReconciler) createService(ctx context.Context, deployer *deployerv1.AppDeployer) error {
+func (r *AppDeployerReconciler) updateService(ctx context.Context, deployer *deployerv1.AppDeployer) error {
 	log := log.FromContext(ctx)
 	spec := deployer.Spec
 
@@ -216,7 +226,7 @@ func (r *AppDeployerReconciler) createService(ctx context.Context, deployer *dep
 	}
 
 	if !reflect.DeepEqual(currService.Spec.Ports, newService.Spec.Ports) {
-		currService.Spec.Ports = newService.Spec.Ports
+		currService.Spec = newService.Spec
 
 		log.Info("Updating service")
 		return r.Update(ctx, currService)
@@ -225,7 +235,7 @@ func (r *AppDeployerReconciler) createService(ctx context.Context, deployer *dep
 	return nil
 }
 
-func (r *AppDeployerReconciler) createIngress(ctx context.Context, deployer *deployerv1.AppDeployer) error {
+func (r *AppDeployerReconciler) updateIngress(ctx context.Context, deployer *deployerv1.AppDeployer) error {
 	log := log.FromContext(ctx)
 	spec := deployer.Spec
 
@@ -286,9 +296,10 @@ func (r *AppDeployerReconciler) createIngress(ctx context.Context, deployer *dep
 		return r.Create(ctx, &newIngress)
 	}
 
-	if currIngress.Spec.Rules[0].Host != spec.Host {
-		currIngress.Spec.Rules = newIngress.Spec.Rules
-		currIngress.Spec.TLS = newIngress.Spec.TLS
+	if !reflect.DeepEqual(currIngress.Spec.Rules, newIngress.Spec.Rules) ||
+		!reflect.DeepEqual(currIngress.Spec.TLS, newIngress.Spec.TLS) {
+
+		currIngress.Spec = newIngress.Spec
 
 		log.Info("Updating ingress")
 		return r.Update(ctx, currIngress)

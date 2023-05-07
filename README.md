@@ -26,7 +26,7 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 make install
 ```
 
-2. Deploy the controller to the cluster with the image specified by `IMG`:
+2. Deploy the controller to the cluster with the image specified by `IMG`. Itt will apply all manifests required to properly deploy the operator in a separate namespace.
 
 ```sh
 make deploy IMG=ghcr.io/rappizs/deployment-operator:latest
