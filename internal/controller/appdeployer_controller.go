@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -129,7 +128,7 @@ func (r *AppDeployerReconciler) createDeployment(ctx context.Context, deployer *
 					"app": deployer.Name,
 				},
 			},
-			Replicas: intToInt32Pointer(spec.Replicas),
+			Replicas: intToInt32Ptr(spec.Replicas),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -266,7 +265,7 @@ func (r *AppDeployerReconciler) createIngress(ctx context.Context, deployer *dep
 			TLS: []networkingv1.IngressTLS{
 				{
 					Hosts:      []string{spec.Host},
-					SecretName: fmt.Sprintf("%s-secret", deployer.Name),
+					SecretName: deployer.Name,
 				},
 			},
 		},
@@ -308,7 +307,7 @@ func (r *AppDeployerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func intToInt32Pointer(value int) *int32 {
+func intToInt32Ptr(value int) *int32 {
 	value32 := int32(value)
 	return &value32
 }
