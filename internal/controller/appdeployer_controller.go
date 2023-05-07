@@ -42,6 +42,8 @@ type AppDeployerReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+const defaultContainerName = "base-container"
+
 //+kubebuilder:rbac:groups=deployer.rappizs.com,resources=appdeployers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=deployer.rappizs.com,resources=appdeployers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=deployer.rappizs.com,resources=appdeployers/finalizers,verbs=update
@@ -137,7 +139,7 @@ func (r *AppDeployerReconciler) updateDeployment(ctx context.Context, deployer *
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "base-container",
+							Name:  defaultContainerName,
 							Image: spec.Image,
 							Ports: []corev1.ContainerPort{
 								{
@@ -297,9 +299,11 @@ func (r *AppDeployerReconciler) updateIngress(ctx context.Context, deployer *dep
 	}
 
 	if !reflect.DeepEqual(currIngress.Spec.Rules, newIngress.Spec.Rules) ||
-		!reflect.DeepEqual(currIngress.Spec.TLS, newIngress.Spec.TLS) {
+		!reflect.DeepEqual(currIngress.Spec.TLS, newIngress.Spec.TLS) ||
+		!reflect.DeepEqual(currIngress.ObjectMeta.Annotations, newIngress.ObjectMeta.Annotations) {
 
 		currIngress.Spec = newIngress.Spec
+		currIngress.ObjectMeta.Annotations = newIngress.ObjectMeta.Annotations
 
 		log.Info("Updating ingress")
 		return r.Update(ctx, currIngress)
