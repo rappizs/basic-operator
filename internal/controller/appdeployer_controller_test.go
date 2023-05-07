@@ -12,6 +12,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var once sync.Once
@@ -33,6 +34,7 @@ var _ = Describe("AppDeployer controller", func() {
 	ctx := context.Background()
 
 	var deployer *deployerv1.AppDeployer
+	var ownerRef metav1.OwnerReference
 
 	BeforeEach(func() {
 		once.Do(func() {
@@ -56,6 +58,16 @@ var _ = Describe("AppDeployer controller", func() {
 			}
 
 			Expect(k8sClient.Create(ctx, deployer)).Should(Succeed())
+
+			controller := true
+			ownerRef = metav1.OwnerReference{
+				APIVersion:         APIVersion,
+				Kind:               Kind,
+				Name:               Name,
+				UID:                deployer.GetUID(),
+				Controller:         &controller,
+				BlockOwnerDeletion: &controller,
+			}
 		})
 	})
 
@@ -68,19 +80,21 @@ var _ = Describe("AppDeployer controller", func() {
 				return k8sClient.Get(ctx, types.NamespacedName{Name: Name, Namespace: Namespace}, &deployment)
 			}).Should(Succeed())
 
-			// Assert Deployment
-			Expect(deployment.Spec.Selector.MatchLabels).To(Equal(map[string]string{
-				"app": Name,
+			Expect(deployment.Spec.Selector).To(Equal(&metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": deployer.Name,
+				},
 			}))
 
-			Expect(deployment.Spec.Replicas).To(Equal(intToInt32Pointer(Replicas)))
+			Expect(deployment.Spec.Replicas).To(Equal(intToInt32Ptr(Replicas)))
 
-			Expect(deployment.Spec.Template.ObjectMeta.Labels).To(Equal(map[string]string{
-				"app": Name,
+			Expect(deployment.Spec.Template.ObjectMeta).To(Equal(metav1.ObjectMeta{
+				Labels: map[string]string{
+					"app": deployer.Name,
+				},
 			}))
 
 			terminationPeriod := int64(corev1.DefaultTerminationGracePeriodSeconds)
-
 			Expect(deployment.Spec.Template.Spec).To(Equal(
 				corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -105,19 +119,7 @@ var _ = Describe("AppDeployer controller", func() {
 					TerminationGracePeriodSeconds: &terminationPeriod,
 				}))
 
-			controller := true
-
-			Expect(deployment.OwnerReferences).To(Equal([]metav1.OwnerReference{
-				{
-					APIVersion:         APIVersion,
-					Kind:               Kind,
-					Name:               Name,
-					UID:                deployer.GetUID(),
-					Controller:         &controller,
-					BlockOwnerDeletion: &controller,
-				},
-			}))
-
+			Expect(deployment.OwnerReferences).To(Equal([]metav1.OwnerReference{ownerRef}))
 		})
 
 		It("Should create a properly configured Service", func() {
@@ -126,6 +128,21 @@ var _ = Describe("AppDeployer controller", func() {
 			Eventually(func() error {
 				return k8sClient.Get(ctx, types.NamespacedName{Name: Name, Namespace: Namespace}, &service)
 			}).Should(Succeed())
+
+			Expect(service.Spec.Selector).To(Equal(map[string]string{
+				"app": deployer.Name,
+			}))
+
+			Expect(service.Spec.Ports).To(Equal([]corev1.ServicePort{
+				{
+					Name:       "http",
+					Port:       int32(ServicePort),
+					TargetPort: intstr.FromInt(ContainerPort),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			}))
+
+			Expect(service.OwnerReferences).To(Equal([]metav1.OwnerReference{ownerRef}))
 		})
 
 		It("Should create a properly configured Ingress", func() {
@@ -135,7 +152,43 @@ var _ = Describe("AppDeployer controller", func() {
 				return k8sClient.Get(ctx, types.NamespacedName{Name: Name, Namespace: Namespace}, &ingress)
 			}).Should(Succeed())
 
-			Expect(k8sClient.Delete(ctx, deployer)).Should(Succeed())
+			Expect(ingress.ObjectMeta.Annotations).To(Equal(map[string]string{
+				"cert-manager.io/cluster-issuer": ClusterIssuer,
+			}))
+
+			pathType := networkingv1.PathTypePrefix
+			Expect(ingress.Spec.Rules).To(Equal([]networkingv1.IngressRule{
+				{
+					Host: Host,
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: &pathType,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: deployer.Name,
+											Port: networkingv1.ServiceBackendPort{
+												Number: int32(ServicePort),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}))
+
+			Expect(ingress.Spec.TLS).To(Equal([]networkingv1.IngressTLS{
+				{
+					Hosts:      []string{Host},
+					SecretName: Name,
+				},
+			}))
+
+			Expect(ingress.OwnerReferences).To(Equal([]metav1.OwnerReference{ownerRef}))
 		})
 	})
 })
